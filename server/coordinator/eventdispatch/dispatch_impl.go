@@ -6,6 +6,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/CeresDB/ceresdbproto/pkg/commonpb"
 	"github.com/CeresDB/ceresdbproto/pkg/metaeventpb"
 	"github.com/CeresDB/ceresmeta/pkg/coderr"
 	"github.com/CeresDB/ceresmeta/server/cluster"
@@ -15,6 +16,9 @@ import (
 )
 
 var ErrDispatch = coderr.NewCodeError(coderr.Internal, "event dispatch failed")
+
+// The code of OK status from MetaEventService.
+const okStatusCode = 200
 
 type DispatchImpl struct {
 	conns sync.Map
@@ -35,7 +39,7 @@ func (d *DispatchImpl) OpenShard(ctx context.Context, addr string, request *Open
 	if err != nil {
 		return errors.WithMessage(err, "open shard")
 	}
-	if resp.GetHeader().Code != 0 {
+	if checkResponseHeader(resp.GetHeader()) {
 		return ErrDispatch.WithCausef("open shard, err:%s", resp.GetHeader().GetError())
 	}
 	return nil
@@ -52,7 +56,7 @@ func (d *DispatchImpl) CloseShard(ctx context.Context, addr string, request *Clo
 	if err != nil {
 		return errors.WithMessage(err, "close shard")
 	}
-	if resp.GetHeader().Code != 0 {
+	if checkResponseHeader(resp.GetHeader()) {
 		return ErrDispatch.WithCausef("close shard, err:%s", resp.GetHeader().GetError())
 	}
 	return nil
@@ -67,7 +71,7 @@ func (d *DispatchImpl) CreateTableOnShard(ctx context.Context, addr string, requ
 	if err != nil {
 		return errors.WithMessage(err, "create table on shard")
 	}
-	if resp.GetHeader().Code != 0 {
+	if checkResponseHeader(resp.GetHeader()) {
 		return ErrDispatch.WithCausef("create table on shard, err:%s", resp.GetHeader().GetError())
 	}
 	return nil
@@ -82,7 +86,7 @@ func (d *DispatchImpl) DropTableOnShard(ctx context.Context, addr string, reques
 	if err != nil {
 		return errors.WithMessage(err, "drop table on shard")
 	}
-	if resp.GetHeader().Code != 0 {
+	if checkResponseHeader(resp.GetHeader()) {
 		return ErrDispatch.WithCausef("drop table on shard, err:%s", resp.GetHeader().GetError())
 	}
 	return nil
@@ -132,4 +136,9 @@ func convertUpdateShardInfoToPB(updateShardInfo *UpdateShardInfo) *metaeventpb.U
 		CurrShardInfo: cluster.ConvertShardsInfoToPB(updateShardInfo.CurrShardInfo),
 		PrevVersion:   updateShardInfo.PrevVersion,
 	}
+}
+
+// Return false if the header is not ok.
+func checkResponseHeader(header *commonpb.ResponseHeader) bool {
+	return header.GetCode() == okStatusCode
 }
