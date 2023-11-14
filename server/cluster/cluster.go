@@ -33,7 +33,7 @@ import (
 
 const (
 	defaultProcedurePrefixKey = "procedure"
-	defaultAllocStep          = 5
+	defaultAllocStep          = 500
 )
 
 type Cluster struct {
